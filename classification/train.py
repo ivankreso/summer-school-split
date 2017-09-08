@@ -1,7 +1,5 @@
 import tensorflow as tf
 
-tf.device("/cpu:0")
-
 # every MNIST sample has two parts: an image of a handwritten digit and a corresponding label
 from tensorflow.examples.tutorials.mnist import input_data
 mnist = input_data.read_data_sets("MNIST_data/", one_hot=True)
