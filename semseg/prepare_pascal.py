@@ -31,7 +31,7 @@ class_info = [[128,64,128,   'background'],
               [119,11,32,    'monitor']]
 
 
-def add_padding(img, val, target_size=500):
+def add_padding(img, val, target_size):
   #np.all(a == b, axis=tuple(range(-b.ndim, 0)))
   height = img.shape[0]
   width = img.shape[1]
@@ -52,12 +52,19 @@ def add_padding(img, val, target_size=500):
   return padded_img
 
 def imread(path):
-  img = pimg.open(path)
-  return np.array(img)
+  return pimg.open(path)
 
-def resize(img, img_size, interpolation=pimg.BICUBIC):
-  img = pimg.fromarray(img)
-  return np.array(img.resize(img_size, interpolation))
+def resize(img, size, interpolation=pimg.BICUBIC):
+  w, h = img.size
+  if w > h:
+    new_h = round(size * (h / w))
+    new_size = (size, new_h)
+  elif h > w:
+    new_w = round(size * (w / h))
+    new_size = (new_w, size)
+  else:
+    new_size = (size, size)
+  return np.array(img.resize(new_size, interpolation))
 
 def save(img, path):
   img = pimg.fromarray(img)
@@ -72,16 +79,17 @@ def remap_labels(labels, id_map):
 
 
 def prepare_dataset(split_name):
-  classes = [['person', 'car', 'cat', 'dog', 'horse'],
-             [15, 7, 8, 12, 13]]
+  classes = [['background', 'person', 'car', 'cat', 'dog', 'horse'],
+             [0, 15, 7, 8, 12, 13]]
   num_classes = len(classes[0])
-  id_map = {-1: num_classes+1}
+  id_map = {-1: num_classes}
   for i, cid in enumerate(classes[1]):
-    id_map[cid] = i + 1
+    id_map[cid] = i
 
   data_dir = '/home/kivan/datasets/VOC2012/'
   save_dir = '/home/kivan/datasets/SSDS/'
-  img_size = (128, 128)
+  # img_size = (128, 128)
+  img_size = 256
 
   imglist = list(map(str.strip, open(join(data_dir, split_name+'.txt')).readlines()))
   img_dir = join(data_dir, 'JPEGImages')
@@ -97,9 +105,14 @@ def prepare_dataset(split_name):
   all_labels = []
   for i in trange(len(imglist)):
     img_name = imglist[i]
-
     labels_path = join(labels_dir, img_name + '.png')
     labels = imread(labels_path)
+    labels = resize(labels, img_size, pimg.NEAREST)
+    
+    # labels = np.array(labels.resize(img_size, pimg.NEAREST))
+    
+  # return np.array(img.resize(img_size, interpolation))
+    
     labels = labels.astype(np.int8)
     class_ids = np.lib.arraysetops.unique(labels)
     class_exist = False
@@ -115,8 +128,10 @@ def prepare_dataset(split_name):
     labels_path = join(labels_dir, img_name + '.png')
     #img = ski.io.imread(img_path)
     img = imread(img_path)
+    # img = np.array(img.resize(img_size, pimg.LANCZOS))
+    img = resize(img, img_size, pimg.LANCZOS)
+    
     assert img.shape[2] == 3
-    #img = cv2.imread(img_path, cv2.IMREAD_COLOR) BGR!
 
     # compute mean
     mean_sum += img.mean((0,1))
@@ -128,10 +143,11 @@ def prepare_dataset(split_name):
     #hist, _ = np.histogram(class_hist, bins=256)
     #plt.hist(hist, 22)  # plt.hist passes it's arguments to np.histogram
     #plt.show()
-    img = add_padding(img, 0)
-    labels = add_padding(labels, num_classes)
-    img = resize(img, img_size, pimg.LANCZOS)
-    labels = resize(labels, img_size, pimg.NEAREST)
+    img = add_padding(img, 0, img_size)
+    labels = add_padding(labels, num_classes, img_size)
+    # img = resize(img, img_size, pimg.LANCZOS)
+    # labels = resize(labels, img_size, pimg.NEAREST)
+
     # print(join(save_dir, 'rgb', img_name+'.png'))
     # save(img, join(save_dir, 'rgb', img_name+'.png'))
     all_images.append(img)
