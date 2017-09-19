@@ -10,26 +10,17 @@ def _shuffle_data(data_x, data_y):
   shuffled_data_y = np.ascontiguousarray(data_y[indices])
   return shuffled_data_x, shuffled_data_y
 
-
 class Dataset():
-  class_info = [['road', [128,64,128]],
-                ['building', [70,70,70]],
-                ['infrastructure', [220,220,0]],
-                ['vegetation', [107,142,35]],
-                ['sky', [70,130,180]],
-                ['person', [220,20,60]],
-                ['vehicle', [0,0,142]]]
-  num_classes = len(class_info)
+  class_info = [['background', 'person', 'car', 'cat', 'dog', 'horse'],
+                []]
 
   def __init__(self, split_name, batch_size, shuffle=True):
-    # self.mean = np.array([116.5, 112.1, 104.1])
-    # self.std = np.array([57.92, 56.97, 58.54])
-    self.mean = np.array([75.205, 85.014, 75.089])
-    self.std = np.array([46.894, 47.633, 46.471])
+    self.mean = np.array([116.5, 112.1, 104.1])
+    self.std = np.array([57.92, 56.97, 58.54])
     self.batch_size = batch_size
     self.shuffle = shuffle
     # load the dataset
-    data_dir = '/home/kivan/datasets/SSDS/cityscapes'
+    data_dir = '/home/kivan/datasets/SSDS'
     data = pickle.load(open(join(data_dir, split_name+'.pickle'), 'rb'))
     self.x = data['rgb']
     self.y = data['labels']

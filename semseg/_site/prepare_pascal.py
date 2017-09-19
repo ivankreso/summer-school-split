@@ -167,6 +167,7 @@ def prepare_dataset(split_name):
   data['labels'] = all_labels
   pickle.dump(data, open(join(save_dir, split_name+'.pickle'), 'wb'))
 
+  # pickle.dump()
 
 if __name__ == '__main__':
   prepare_dataset('train')
