@@ -22,7 +22,7 @@ def conv_22(x, num_maps, k=3, activation=tf.nn.relu):
 def conv(x, num_maps, k=3):
   x = tf.layers.conv2d(x, num_maps, k, use_bias=False,
     kernel_regularizer=tf.contrib.layers.l2_regularizer(weight_decay), padding='same')
-  x = tf.layers.batch_normalization(x, training=is_training)
+  # x = tf.layers.batch_normalization(x, training=is_training)
   return tf.nn.relu(x)
 
 def pool(x):
@@ -58,8 +58,10 @@ def upsample(x, skip, num_maps):
 
 def build_model(x, num_classes):
   # input_size = tf.shape(x)[height_dim:height_dim+2]
+  print(x)
   input_size = x.get_shape().as_list()[1:3]
   maps = [32, 64, 128, 256, 128]
+  # maps = [32, 64, 64, 64, 64]
   # maps = [64, 128, 256, 256]
   skip_layers = []
   x = conv(x, maps[0], k=5)
@@ -68,11 +70,11 @@ def build_model(x, num_classes):
   x = pool(x)
   x = conv(x, maps[1])
   x = conv(x, maps[1])
-  # skip_layers.append(x)
+  skip_layers.append(x)
   x = pool(x)
   x = conv(x, maps[2])
   x = conv(x, maps[2])
-  # skip_layers.append(x)
+  skip_layers.append(x)
   x = pool(x)
   x = conv(x, maps[3])
   x = conv(x, maps[3])
@@ -85,10 +87,10 @@ def build_model(x, num_classes):
   # x = pool(x)
   # x = conv(x, maps[4])
 
-  # 36 without
-  for i, skip in reversed(list(enumerate(skip_layers))):
-    print(i, x, '\n', skip)
-    x = upsample(x, skip, maps[i])
+  # # 36 without
+  # for i, skip in reversed(list(enumerate(skip_layers))):
+  #   print(i, x, '\n', skip)
+  #   x = upsample(x, skip, maps[i])
 
   # x = pool(x)
   # x = conv(x, 64, 3)

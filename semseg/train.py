@@ -1,6 +1,11 @@
+import time
+from os.path import join
+
 import tensorflow as tf
 import numpy as np
 
+import utils
+import libs.cylib as cylib
 import model
 from data import Dataset
 
@@ -8,10 +13,10 @@ from data import Dataset
 num_epochs = 50
 batch_size = 10
 num_classes = Dataset.num_classes
-
-# learning_rate = 5e-4
+save_dir = 'assets/color_outputs/'
+learning_rate = 5e-4
 # learning_rate = 1e-2
-learning_rate = 1e-3
+# learning_rate = 1e-3
 decay_power = 1.2
 
 #sgd
@@ -19,77 +24,6 @@ decay_power = 1.2
 # decay_power = 0.9
 
 # learning_rate = 1e-4
-
-# use_dropout = True
-use_dropout = False
-drop_rate = 0.2
-
-
-def BNReluConv(x, num_maps, k=3):
-  # net = tf.contrib.layers.batch_norm(net, **bn_params)
-  x = tf.layers.batch_normalization(x, **bn_params)    
-  x = tf.nn.relu(x)
-  x = tf.layers.conv2d(x, num_maps, k, use_bias=False,
-    kernel_regularizer=reg_func, padding='same')
-  return x
-
-def upsample_dn(x, skip, num_maps):
-  skip_size = skip.get_shape().as_list()[1:3]
-  top_maps = x.get_shape().as_list()[3]
-  skip = BNReluConv(skip, top_maps, k=1)
-  x = tf.image.resize_bilinear(x, skip_size)
-  print(x, skip)
-  x = tf.concat([x, skip], 3)
-  return BNReluConv(x, num_maps)
-
-def layer(net, num_filters, name):
-  with tf.variable_scope(name):
-    net = BNReluConv(net, 4*num_filters, k=1)
-    net = BNReluConv(net, num_filters, k=3)
-    if use_dropout: 
-      net = tf.layers.dropout(net, rate=drop_rate, training=is_training)
-  return net
-
-def dense_block(net, size, growth, name):
-  with tf.variable_scope(name):
-    for i in range(size):
-      x = net
-      net = layer(net, growth, 'layer'+str(i))
-      net = tf.concat([x, net], 3)
-  return net
-
-
-def build_model_densenet(x):
-  # input_size = tf.shape(x)[height_dim:height_dim+2]
-  input_size = x.get_shape().as_list()[1:3]
-  # blocks = [4, 6, 12, 8]
-  # blocks = [2, 4, 8, 6]
-  blocks = [4, 8, 12]
-  #block_sizes = [6,12,24,16]
-
-  # maps = [64, 128, 256, 256]
-  skip_layers = []
-  # x = conv(x, maps[0], k=5)
-  x = tf.layers.conv2d(x, 64, 5, padding='same')
-  # x = conv(x, maps[0])
-  # skip_layers.append(x)
-  x = pool(x)
-  for i, size in enumerate(blocks):
-    x = dense_block(x, size, 32, 'block'+str(i))
-    if i < len(blocks) - 1:
-      skip_layers.append(x)
-      x = pool(x)
-  print('Before :', x)
-
-                      # x = BNReluConv(x, 128, k=1)
-  # 36 without
-  # for i, skip in reversed(list(enumerate(skip_layers))):
-  #   print(i, x, '\n', skip)
-  #   x = upsample_dn(x, skip, 128)
-
-  logits = tf.layers.conv2d(tf.nn.relu(x), num_classes, 1, kernel_regularizer=reg_func, padding='same')
-  logits = tf.image.resize_bilinear(logits, input_size, name='upsample_logits')
-  return logits
 
 
 
@@ -100,21 +34,21 @@ def add_regularization(loss):
   return tf.add_n([loss] + regularization_losses, name='total_loss')
 
 
-def build_loss(logits, labels):
+def build_loss(logits, y):
   print('loss: cross-entropy')
-  labels = tf.reshape(labels, shape=[-1])
+  y = tf.reshape(y, shape=[-1])
   logits = tf.reshape(logits, [-1, num_classes])
-  mask = labels < num_classes
+  mask = y < num_classes
   idx = tf.where(mask)
-  labels = tf.to_float(labels)
-  labels = tf.gather_nd(labels, idx)
+  y = tf.to_float(y)
+  y = tf.gather_nd(y, idx)
   # labels = tf.boolean_mask(labels, mask)
-  labels = tf.to_int32(labels)
+  y = tf.to_int32(y)
   logits = tf.gather_nd(logits, idx)
   # logits = tf.boolean_mask(logits, mask)
   
-  onehot_labels = tf.one_hot(labels, num_classes)
-  xent = tf.nn.softmax_cross_entropy_with_logits(logits=logits, labels=onehot_labels)
+  y_one_hot = tf.one_hot(y, num_classes)
+  xent = tf.nn.softmax_cross_entropy_with_logits(logits=logits, labels=y_one_hot)
 
   # weights = [4] * num_classes
   # # weights[0] = 0.1
@@ -124,59 +58,37 @@ def build_loss(logits, labels):
   # xent = tf.multiply(weights, xent)
 
   xent = tf.reduce_mean(xent)
+  tf.summary.scalar('cross_entropy', xent)
   loss = add_regularization(xent)
-  return loss, logits, labels
+  return loss, logits, y
 
 
-def print_metrics(conf_mat, name):
-  num_correct = conf_mat.trace()
-  num_classes = conf_mat.shape[0]
-  total_size = conf_mat.sum()
-  avg_pixel_acc = num_correct / total_size * 100.0
-  TPFP = conf_mat.sum(0)
-  TPFN = conf_mat.sum(1)
-  FN = TPFN - conf_mat.diagonal()
-  FP = TPFP - conf_mat.diagonal()
-  class_iou = np.zeros(num_classes)
-  # class_recall = np.zeros(num_classes)
-  # class_precision = np.zeros(num_classes)
-  print('\n', name, ' evaluation metrics:')
-  for i in range(num_classes):
-    TP = conf_mat[i,i]
-    class_iou[i] = (TP / (TP + FP[i] + FN[i])) * 100.0
-    class_name = Dataset.class_info[i][0]
-    print('\t%s IoU accuracy = %.2f %%' % (class_name, class_iou[i]))
-  avg_class_iou = class_iou.mean()
-  print(name + ' IoU mean class accuracy - TP / (TP+FN+FP) = %.2f %%' % avg_class_iou)
-  print(name + ' pixel accuracy = %.2f %%' % avg_pixel_acc)
-  return avg_class_iou
+def validate(data, x, y, y_pred, loss):
+  print('\nValidation phase:')
+  conf_mat = np.zeros((num_classes, num_classes), dtype=np.uint64) 
+  for i, (x_np, y_np) in enumerate(data):
+    start_time = time.time()    
+    # loss_np, y_pred_np, conf_mat_np = sess.run([loss, y_pred, conf_mat],
+    #   feed_dict={x: x_np, y: y_np, is_training: False})
+    loss_np, y_pred_np = sess.run([loss, y_pred],
+      feed_dict={x: x_np, y: y_np, is_training: False})
 
-def draw_output(y, class_colors, save_path=None):
-  width = y.shape[1]
-  height = y.shape[0]
-  y_rgb = np.zeros((height, width, 3), dtype=np.uint8)
-  for cid in range(len(class_colors)):
-    cpos = np.repeat((y == cid).reshape((height, width, 1)), 3, axis=2)
-    cnum = cpos.sum() // 3
-    y_rgb[cpos] = np.array(class_colors[cid][:3] * cnum, dtype=np.uint8)
-  if save_path:
-    image = pimg.fromarray(y_rgb)
-    image.save(save_path)
-  return y_rgb
+    duration = time.time() - start_time
 
-def validate(data, x, y, loss, conf_mat):
-  confusion_mat = np.zeros((num_classes, num_classes), dtype=np.uint64) 
-  for i, (batch_x, batch_y) in enumerate(data):
-    batch_loss, batch_conf_mat = sess.run([loss, conf_mat],
-      feed_dict={x: batch_x, y: batch_y, is_training: False})
-    confusion_mat += batch_conf_mat.astype(np.uint64)
-    # y_pred = logits_val.argmax(3)
-    # add_confusion_matrix(batch_y.reshape(-1), y_pred.reshape(-1), confusion_mat)
-    if i % 50 == 0:
-      string = 'epoch %d / %d loss = %.2f' % (epoch+1, num_epochs, batch_loss)
+    # save_path = join(save_dir, '%03d'%i + '.png')
+    # utils.draw_output(y_pred_np[0]fix, Dataset.class_info, save_path=save_path) 
+
+    # net_labels = logits.argmax(3).astype(np.int32)
+    #gt_labels = gt_labels.astype(np.int32, copy=False)
+    cylib.collect_confusion_matrix(y_pred_np.reshape(-1),
+                                   y_np.reshape(-1), conf_mat)
+    # conf_mat_all += conf_mat_np.astype(np.uint64)
+    if i % 10 == 0:
+      string = 'epoch %d / %d loss = %.2f (%.1f examples/sec)' % \
+        (epoch+1, num_epochs, loss_np, x_np.shape[0] / duration)
       print(string)
-  print(confusion_mat)
-  return print_metrics(confusion_mat, 'Validation')
+  print(conf_mat)
+  return utils.print_metrics(conf_mat, 'Validation', Dataset.class_info)
 
 
 train_data = Dataset('train', batch_size)
@@ -185,18 +97,22 @@ val_data = Dataset('val', batch_size, shuffle=False)
 height = train_data.height
 width = train_data.width
 channels = train_data.channels
+
+
 # x = tf.placeholder(tf.float32, shape=(batch_size, height, width, channels))
 # y = tf.placeholder(tf.int32, shape=(batch_size, height, width))
-x = tf.placeholder(tf.float32, shape=(None, height, width, channels))
-y = tf.placeholder(tf.int32, shape=(None, height, width))
+
+# create placeholders for inputs
+x = tf.placeholder(tf.float32, shape=(None, height, width, channels), name='rgb_images')
+y = tf.placeholder(tf.int32, shape=(None, height, width), name='labels')
 
 logits, is_training = model.build_model(x, num_classes)
 loss, logits_vec, y_vec = build_loss(logits, y)
 
 # build ops for confusion matrix
-y_pred = tf.argmax(logits_vec, axis=1, output_type=tf.int32)
-print(y, y_pred)
-conf_mat = tf.confusion_matrix(y_vec, y_pred, num_classes)
+# y_pred = tf.argmax(logits_vec, axis=1, output_type=tf.int32)
+y_pred = tf.argmax(logits, axis=3, output_type=tf.int32)
+# conf_mat = tf.confusion_matrix(y_vec, y_pred, num_classes)
 
 global_step = tf.Variable(0, trainable=False)
 decay_steps = num_epochs * train_data.num_batches
@@ -214,26 +130,41 @@ with tf.control_dependencies(update_ops):
   # train_step = tf.train.MomentumOptimizer(lr, momentum=0.9).minimize(loss, global_step=global_step)
 # loss = tf.Print(loss, [lr, global_step])
 
-sess = tf.Session()
+# sess = tf.Session()
+sess = tf.Session(config=tf.ConfigProto(log_device_placement=True))
+
+summary_all = tf.summary.merge_all()
+train_writer = tf.summary.FileWriter('assets/logs/3/train', sess.graph)
+# test_writer = tf.summary.FileWriter('assets/logs/3/test')
+
 tf.global_variables_initializer().run(session=sess)
+
 
 step = 0
 best_iou = 0
+exp_start_time = time.time()
 for epoch in range(num_epochs):
   # for i in range(num_batches-1):
-  confusion_mat = np.zeros((num_classes, num_classes), dtype=np.uint64)  
+  # confusion_mat = np.zeros((num_classes, num_classes), dtype=np.uint64)
+  print('\nTraining phase:')  
   for batch_x, batch_y in train_data:
-    batch_loss, batch_conf_mat, _ = sess.run([loss, conf_mat, train_step],
+    start_time = time.time()
+    # batch_loss, batch_conf_mat, _ = sess.run([loss, conf_mat, train_step],
+    # batch_loss, _ = sess.run([loss, train_step],
+    #   feed_dict={x: batch_x, y: batch_y, is_training: True})
+    batch_loss, summary, _ = sess.run([loss, summary_all, train_step],
       feed_dict={x: batch_x, y: batch_y, is_training: True})
-    
-    confusion_mat += batch_conf_mat.astype(np.uint64)
-    if step % 30 == 0:
-      string = 'epoch %d / %d iter %d loss = %.2f' %
-        (epoch+1, num_epochs, step, batch_loss)
+    train_writer.add_summary(summary, step)
+    duration = time.time() - start_time
+    # confusion_mat += batch_conf_mat.astype(np.uint64)
+    if step % 20 == 0:
+      string = '%s: epoch %d / %d, iter %05d, loss = %.2f (%.1f examples/sec)' % \
+        (utils.get_expired_time(exp_start_time), epoch+1, num_epochs, step,
+         batch_loss, batch_size / duration)
       print(string)
     step += 1
-  print_metrics(confusion_mat, 'Train') 
-  iou = validate(val_data, x, y, loss, conf_mat)
+  # utils.print_metrics(confusion_mat, 'Train') 
+  iou = validate(val_data, x, y, y_pred, loss)
   if iou > best_iou:
     best_iou = iou
   print('\nBest IoU = %.2f\n' % best_iou)
