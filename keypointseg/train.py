@@ -26,7 +26,7 @@ tf.global_variables_initializer().run()
 
 for k in range(2048):
 	#
-	X, Y = load_batch(1)
+	X, Y = load_batch(32)
 	#
 	sess.run(step, feed_dict={x: X, y: Y, is_training: True})
 	if True:
