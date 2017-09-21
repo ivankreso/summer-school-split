@@ -73,4 +73,4 @@ def make_convnet(x, numoutmaps):
 	x = conv(x, 24)
 	#
 	x = tf.layers.conv2d(x, numoutmaps, 1, padding='same')
-	return tf.nn.sigmoid(x)
+	return tf.nn.sigmoid(x, name='pred')
