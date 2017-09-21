@@ -9,7 +9,7 @@ import time
 #
 from segnets import TinySegNet
 model = TinySegNet(3, 3)
-model.load_state_dict( torch.load('params/2048.pth') )
+model.load_state_dict( torch.load('caltechfaces/params/2048.pth') )
 model.cuda()
 
 #
@@ -53,7 +53,8 @@ def process_image(img, thr=0.1):
 	lbl = lbl.mul(lbl.gt(thr).float())
 	print('* (1) ' + str(time.time() - start))
 	#
-	return [], lbl.sum(0).mul(255).byte().numpy()
+	#return [], lbl.sum(0).mul(255).byte().numpy()
+	return [], lbl.mul(255).byte().permute(1, 2, 0).numpy()
 
 #
 if len(sys.argv)>=2:
