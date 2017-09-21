@@ -74,3 +74,51 @@ def make_convnet(x, numoutmaps):
 	#
 	x = tf.layers.conv2d(x, numoutmaps, 1, padding='same')
 	return tf.nn.sigmoid(x, name='pred')
+#
+def get_convblock(x, nmaps):
+	#
+	x = tf.layers.conv2d(x, nmaps, 3, padding='same')
+	x = tf.layers.batch_normalization(x, training=is_training)
+	return tf.nn.relu(x)
+
+def make_tinysegnet(x, numoutmaps):
+	#
+	S = 24
+	sizes = []
+	#
+	sizes.append( x.get_shape().as_list()[1:3] )
+	x = get_convblock(x, 1*S)
+	x = get_convblock(x, 1*S)
+	x = tf.layers.max_pooling2d(x, 3, 2, 'same')
+	sizes.append( x.get_shape().as_list()[1:3] )
+	x = get_convblock(x, 2*S)
+	x = get_convblock(x, 2*S)
+	x = tf.layers.max_pooling2d(x, 3, 2, 'same')
+	sizes.append( x.get_shape().as_list()[1:3] )
+	x = get_convblock(x, 3*S)
+	x = get_convblock(x, 3*S)
+	x = tf.layers.max_pooling2d(x, 3, 2, 'same')
+	sizes.append( x.get_shape().as_list()[1:3] )
+	x = get_convblock(x, 4*S)
+	x = get_convblock(x, 4*S)
+	x = tf.layers.max_pooling2d(x, 3, 2, 'same')
+	#
+	x = tf.layers.conv2d(x, 4*S, 3, padding='same')
+	#
+	x = tf.image.resize_bilinear(x, sizes[3])
+	x = get_convblock(x, 3*S)
+	x = get_convblock(x, 3*S)
+	#
+	x = tf.image.resize_bilinear(x, sizes[2])
+	x = get_convblock(x, 2*S)
+	x = get_convblock(x, 2*S)
+	#
+	x = tf.image.resize_bilinear(x, sizes[1])
+	x = get_convblock(x, 1*S)
+	x = get_convblock(x, 1*S)
+	#
+	x = tf.image.resize_bilinear(x, sizes[0])
+	x = get_convblock(x, 1*S)
+	x = get_convblock(x, numoutmaps)
+	#
+	return tf.nn.sigmoid(x, name='pred')
