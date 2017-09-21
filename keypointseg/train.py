@@ -18,7 +18,7 @@ thr = 0.1
 loss = tf.reduce_mean( tf.nn.relu( 0.5*(y - pred)**2 - 0.5*thr**2 ) )
 
 # we will use RMSprop to learn the model
-step = tf.train.RMSPropOptimizer(1e-4).minimize(loss)
+step = tf.train.RMSPropOptimizer(0.01).minimize(loss)
 
 #
 sess = tf.InteractiveSession()
