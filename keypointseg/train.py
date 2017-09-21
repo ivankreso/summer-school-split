@@ -23,8 +23,6 @@ step = tf.train.RMSPropOptimizer(0.01).minimize(loss)
 
 #
 saver = tf.train.Saver()
-=======
->>>>>>> 287d47bcaa0471b5db79994e9d4c80553c240174
 
 #
 sess = tf.InteractiveSession()
