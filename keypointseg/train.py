@@ -19,6 +19,12 @@ loss = tf.reduce_mean( tf.nn.relu( 0.5*(y - pred)**2 - 0.5*thr**2 ) )
 
 # we will use RMSprop to learn the model
 step = tf.train.RMSPropOptimizer(0.01).minimize(loss)
+<<<<<<< HEAD
+
+#
+saver = tf.train.Saver()
+=======
+>>>>>>> 287d47bcaa0471b5db79994e9d4c80553c240174
 
 #
 sess = tf.InteractiveSession()
@@ -29,8 +35,17 @@ for k in range(2048):
 	X, Y = load_batch(32)
 	#
 	sess.run(step, feed_dict={x: X, y: Y, is_training: True})
-	if True:
-		l = sess.run(loss, feed_dict={x: X, y: Y, is_training: False})
-		print('* loss on batch %d: %.7f' % (k, l))
+	#
+	l = sess.run(loss, feed_dict={x: X, y: Y, is_training: False})
+	print('* loss on batch %d: %.7f' % (k, l))
+	#
+	u = sess.run(pred, feed_dict={x: X, is_training: False})
+	import cv2
+	cv2.imwrite('wat.jpg', 255*u[0, :, :, :])
+
+#
+import os
+os.system('mkdir -p save')
+saver.save(sess, 'save/model')
 
 print('* done ...')

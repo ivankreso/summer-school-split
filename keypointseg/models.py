@@ -13,7 +13,7 @@ def upsample(x, skip, num_maps):
 	x = tf.concat([x, skip], 3)
 	return conv(x, num_maps)
 
-def make_convnet(x, numoutmaps):
+def make_convnet_(x, numoutmaps):
 	input_size = x.get_shape().as_list()[1:3]
 	maps = [32, 64, 128, 128]
 	skip_layers = []
@@ -39,4 +39,38 @@ def make_convnet(x, numoutmaps):
 
 	x = tf.layers.conv2d(x, numoutmaps, 1, padding='same')
 	x = tf.image.resize_bilinear(x, input_size, name='upsample_logits')
+	return tf.nn.sigmoid(x)
+
+def make_convnet(x, numoutmaps):
+	# 1
+	s1 = x.get_shape().as_list()[1:3]
+	x = conv(x, 24)
+	x = conv(x, 24)
+	x = tf.layers.max_pooling2d(x, 2, 2, 'same')
+	# 2
+	s2 = x.get_shape().as_list()[1:3]
+	x = conv(x, 48)
+	x = conv(x, 48)
+	x = tf.layers.max_pooling2d(x, 2, 2, 'same')
+	# 3
+	s3 = x.get_shape().as_list()[1:3]
+	x = conv(x, 64)
+	x = conv(x, 64)
+	x = tf.layers.max_pooling2d(x, 2, 2, 'same')
+	#
+	x = conv(x, 128)
+	#
+	x = tf.image.resize_bilinear(x, s3)
+	x = conv(x, 64)
+	x = conv(x, 64)
+	#
+	x = tf.image.resize_bilinear(x, s2)
+	x = conv(x, 48)
+	x = conv(x, 48)
+	#
+	x = tf.image.resize_bilinear(x, s1)
+	x = conv(x, 24)
+	x = conv(x, 24)
+	#
+	x = tf.layers.conv2d(x, numoutmaps, 1, padding='same')
 	return tf.nn.sigmoid(x)
