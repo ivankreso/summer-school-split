@@ -12,33 +12,11 @@ maxhw = 160
 import tensorflow as tf
 from models import *
 x = tf.placeholder(tf.float32, [None, maxhw, maxhw, 3])
-# pred, is_training = make_tinysegnet(x, 3) # `x` is input, `3` specifies the number of output channels
 pred, is_training = build_model(x, 3) # `x` is input, `3` specifies the number of output channels
 
 saver = tf.train.Saver()
-
-
 sess = tf.Session()
-# tf.global_variables_initializer().run()
-
 saver.restore(sess, 'save/model')
-
-'''
-maxhw = 160
-import tensorflow as tf
-sess = tf.InteractiveSession()
-saver = tf.train.import_meta_graph('save/model.meta')
-saver.restore(sess, tf.train.latest_checkpoint('save/'))
-
-graph = tf.get_default_graph()
-
-#
-x = graph.get_tensor_by_name('Placeholder:0')
-is_training = graph.get_tensor_by_name('Placeholder_2:0')
-pred = graph.get_tensor_by_name('pred:0')
-
-tf.global_variables_initializer().run()
-'''
 
 #
 # runtime
@@ -48,7 +26,6 @@ def process_image(img, thr=0.1):
 	#
 	X = numpy.stack([img])
 	lbl = sess.run(pred, feed_dict={x: X, is_training: False})
-	print(lbl.shape)
 	lbl = lbl[0, :, :, :]
 	# threshold array
 	#
