@@ -42,7 +42,7 @@ class Dataset():
     self.shuffle = shuffle
     # load the dataset
     # data_dir = '/home/kivan/datasets/SSDS/cityscapes'
-    data_dir = 'assets/data/'
+    data_dir = 'local/data/'
     data = pickle.load(open(join(data_dir, split_name+'.pickle'), 'rb'))
     self.x = data['rgb']
     self.y = data['labels']
