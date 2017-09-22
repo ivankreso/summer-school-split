@@ -1,4 +1,7 @@
 import time
+from os.path import join
+
+import tensorflow as tf
 import numpy as np
 import PIL.Image as pimg
 
@@ -8,8 +11,8 @@ def print_metrics(conf_mat, name, class_info):
   num_classes = conf_mat.shape[0]
   total_size = conf_mat.sum()
   avg_pixel_acc = num_correct / total_size * 100.0
-  TPFN = conf_mat.sum(0)
-  TPFP = conf_mat.sum(1)
+  TPFP = conf_mat.sum(0)
+  TPFN = conf_mat.sum(1)
   FN = TPFN - conf_mat.diagonal()
   FP = TPFP - conf_mat.diagonal()
   class_iou = np.zeros(num_classes)
@@ -25,7 +28,7 @@ def print_metrics(conf_mat, name, class_info):
   return avg_class_iou
 
 
-def draw_output(y, class_colors, save_path=None):
+def colorize_labels(y, class_colors, save_path=None):
   width = y.shape[1]
   height = y.shape[0]
   y_rgb = np.zeros((height, width, 3), dtype=np.uint8)
@@ -37,6 +40,14 @@ def draw_output(y, class_colors, save_path=None):
     image = pimg.fromarray(y_rgb)
     image.save(save_path)
   return y_rgb
+
+
+def draw_labels(y, names, class_info, save_dir):
+  tf.gfile.MakeDirs(save_dir)
+  for i, name in enumerate(names):
+    img = colorize_labels(y[i], class_info)
+    save_path = join(save_dir, name + '.png')
+    pimg.fromarray(img).save(save_path)
 
 
 def get_expired_time(start_time):

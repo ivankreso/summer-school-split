@@ -3,19 +3,31 @@ import numpy as np
 import pickle
 from os.path import join
 
-def _shuffle_data(data_x, data_y):
-  indices = np.arange(data_x.shape[0])
-  np.random.shuffle(indices)
-  shuffled_data_x = np.ascontiguousarray(data_x[indices])
-  shuffled_data_y = np.ascontiguousarray(data_y[indices])
-  return shuffled_data_x, shuffled_data_y
+# def _shuffle_data(data_x, data_y):
+#   indices = np.arange(data_x.shape[0])
+#   np.random.shuffle(indices)
+#   shuffled_data_x = np.ascontiguousarray(data_x[indices])
+#   shuffled_data_y = np.ascontiguousarray(data_y[indices])
+#   return shuffled_data_x, shuffled_data_y
+
+def _shuffle_data(data):
+  idx = np.arange(data[0].shape[0])
+  np.random.shuffle(idx)
+  shuffled_data = []
+  for d in data:
+    if type(d) == np.ndarray:
+      d = np.ascontiguousarray(d[idx])
+    else:
+      d = [d[i] for i in idx]
+    shuffled_data.append(d)
+  return shuffled_data
 
 
 class Dataset():
   class_info = [['road', [128,64,128]],
                 ['building', [70,70,70]],
                 ['infrastructure', [220,220,0]],
-                ['vegetation', [107,142,35]],
+                ['nature', [107,142,35]],
                 ['sky', [70,130,180]],
                 ['person', [220,20,60]],
                 ['vehicle', [0,0,142]]]
@@ -29,10 +41,12 @@ class Dataset():
     self.batch_size = batch_size
     self.shuffle = shuffle
     # load the dataset
-    data_dir = '/home/kivan/datasets/SSDS/cityscapes'
+    # data_dir = '/home/kivan/datasets/SSDS/cityscapes'
+    data_dir = 'assets/data/'
     data = pickle.load(open(join(data_dir, split_name+'.pickle'), 'rb'))
     self.x = data['rgb']
     self.y = data['labels']
+    self.names = data['names']
     self.x = (self.x.astype(np.float32) - self.mean) / self.std
 
     self.num_examples = self.x.shape[0]
@@ -43,7 +57,7 @@ class Dataset():
 
   def __iter__(self):
     if self.shuffle:
-      self.x, self.y = _shuffle_data(self.x, self.y)
+      self.x, self.y, self.names = _shuffle_data([self.x, self.y, self.names])
     self.cnt = 0
     return self
 
@@ -53,6 +67,7 @@ class Dataset():
     offset = self.cnt * self.batch_size
     x = self.x[offset:offset+self.batch_size]
     y = self.y[offset:offset+self.batch_size]
+    names = self.names[offset:offset+self.batch_size]
     self.cnt += 1
-    return x, y
+    return x, y, names
   

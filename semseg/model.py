@@ -1,7 +1,8 @@
 import tensorflow as tf
 import numpy as np
 
-weight_decay = 1e-4
+# weight_decay = 1e-4
+weight_decay = 0.0
 reg_func = tf.contrib.layers.l2_regularizer(weight_decay)
 
 # need this placeholder for bach norm
@@ -20,14 +21,17 @@ bn_params = {
 def conv_22(x, num_maps, k=3, activation=tf.nn.relu):
   return tf.layers.conv2d(x, num_maps, k, activation=activation, padding='same')
 def conv(x, num_maps, k=3):
+  # x = tf.layers.conv2d(x, num_maps, k,
+  #   kernel_regularizer=tf.contrib.layers.l2_regularizer(weight_decay), padding='same')
+
   x = tf.layers.conv2d(x, num_maps, k, use_bias=False,
     kernel_regularizer=tf.contrib.layers.l2_regularizer(weight_decay), padding='same')
-  # x = tf.layers.batch_normalization(x, training=is_training)
+  x = tf.layers.batch_normalization(x, training=is_training)
   return tf.nn.relu(x)
 
 def pool(x):
-  # return tf.layers.average_pooling2d(x, 2, 2, 'same')
-  return tf.layers.max_pooling2d(x, 2, 2, 'same')
+  return tf.layers.average_pooling2d(x, 2, 2, 'same')
+  # return tf.layers.max_pooling2d(x, 2, 2, 'same')
 
 
 def build_model1(x):
@@ -55,43 +59,48 @@ def upsample(x, skip, num_maps):
   x = tf.concat([x, skip], 3)
   return conv(x, num_maps)
 
-
+# best 78
 def build_model(x, num_classes):
   # input_size = tf.shape(x)[height_dim:height_dim+2]
   print(x)
   input_size = x.get_shape().as_list()[1:3]
-  maps = [32, 64, 128, 256, 128]
+  # maps = [32, 64, 128, 256, 128]
+  
+  # maps = [64, 128, 128, 128]
+  maps = [64, 64, 64, 64]
+  # maps = [32, 64, 64, 64]
   # maps = [32, 64, 64, 64, 64]
   # maps = [64, 128, 256, 256]
   skip_layers = []
-  x = conv(x, maps[0], k=5)
+  x = conv(x, 32, k=5)
+  # x = conv(x, 32, k=3)
   # x = conv(x, maps[0])
   # skip_layers.append(x)
   x = pool(x)
+  x = conv(x, maps[0])
+  # x = conv(x, maps[0])
+  skip_layers.append(x)
+  x = pool(x)
   x = conv(x, maps[1])
-  x = conv(x, maps[1])
+  # x = conv(x, maps[1])
   skip_layers.append(x)
   x = pool(x)
   x = conv(x, maps[2])
-  x = conv(x, maps[2])
+  # x = conv(x, maps[2])
   skip_layers.append(x)
   x = pool(x)
   x = conv(x, maps[3])
-  x = conv(x, maps[3])
-  skip_layers.append(x)
-  x = pool(x)
-  x = conv(x, maps[4])
-  x = conv(x, maps[4])
   # x = conv(x, maps[3])
+
   # skip_layers.append(x)  
   # x = pool(x)
   # x = conv(x, maps[4])
-
+  
   # # 36 without
-  # for i, skip in reversed(list(enumerate(skip_layers))):
-  #   print(i, x, '\n', skip)
-  #   x = upsample(x, skip, maps[i])
-
+  for i, skip in reversed(list(enumerate(skip_layers))):
+    print(i, x, '\n', skip)
+    x = upsample(x, skip, maps[i])
+  print('final: ', x)
   # x = pool(x)
   # x = conv(x, 64, 3)
   # logits = conv(x, num_classes, 3, activation=None)
