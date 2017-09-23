@@ -71,3 +71,10 @@ class Dataset():
     self.cnt += 1
     return x, y, names
   
+  def get_img(self, name):
+    i = self.names.index(name)
+    img = self.x[i]
+    img = img * self.std + self.mean
+    img[img>255] = 255
+    img[img<0] = 0
+    return img.astype(np.uint8)

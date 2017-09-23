@@ -67,9 +67,9 @@ def build_loss(logits, y):
     # pixel_weights = tf.gather(class_weights, y)
     # xent = tf.multiply(pixel_weights, xent)
 
-    xent = tf.reduce_mean(xent)
-    tf.summary.scalar('cross_entropy', xent)
-    loss = add_regularization(xent)
+    loss = tf.reduce_mean(xent)
+    tf.summary.scalar('cross_entropy_loss', loss)
+    # loss = add_regularization(loss)
     return loss
 
 
@@ -88,8 +88,10 @@ def validate(data, x, y, y_pred, loss):
 		# save_path = join(save_dir, '%03d'%i + '.png')
     # utils.draw_output(y_pred_np[0]fix, Dataset.class_info, save_path=save_path)
 
-    utils.draw_labels(y_pred_np, names, Dataset.class_info,
-                      'local/output/predictions')
+    # utils.draw_labels(y_pred_np, names, Dataset.class_info,
+    #                   'local/output/predictions')
+    utils.draw_labels(y_np, names, Dataset.class_info,
+                      'local/output/labels')
 
     # net_labels = logits.argmax(3).astype(np.int32)
     #gt_labels = gt_labels.astype(np.int32, copy=False)
@@ -101,7 +103,7 @@ def validate(data, x, y, y_pred, loss):
         (i, loss_np, x_np.shape[0] / duration)
       print(string)
   print(conf_mat)
-  return utils.print_metrics(conf_mat, 'Validation', Dataset.class_info)
+  return utils.print_stats(conf_mat, 'Validation', Dataset.class_info)
 
 
 
@@ -151,9 +153,16 @@ with tf.control_dependencies(update_ops):
 
 sess = tf.Session()
 
+log_dir = 'local/logs'
+checkpoint_dir = 'local/checkpoints'
+utils.clear_dir(log_dir)
+utils.clear_dir(checkpoint_dir)
+
+saver = tf.train.Saver()
+
 summary_all = tf.summary.merge_all()
-train_writer = tf.summary.FileWriter('local/logs/train', sess.graph)
-# test_writer = tf.summary.FileWriter('assets/logs/3/test')
+train_writer = tf.summary.FileWriter(join(log_dir, 'train'), sess.graph)
+# test_writer = tf.summary.FileWriter()
 
 tf.global_variables_initializer().run(session=sess)
 
@@ -162,7 +171,6 @@ best_iou = 0
 best_epoch = 0
 exp_start_time = time.time()
 for epoch in range(1, num_epochs+1):
-  # for i in range(num_batches-1):
   # confusion_mat = np.zeros((num_classes, num_classes), dtype=np.uint64)
   print('\nTraining phase:')
   for x_np, y_np, names in train_data:
@@ -170,11 +178,11 @@ for epoch in range(1, num_epochs+1):
     #   break
     start_time = time.time()
     # batch_loss, batch_conf_mat, _ = sess.run([loss, conf_mat, train_step],
-    loss_np, _ = sess.run([loss, train_step],
+    # loss_np, _ = sess.run([loss, train_step],
+    #   feed_dict={x: x_np, y: y_np, is_training: True})
+    loss_np, summary, _ = sess.run([loss, summary_all, train_step],
       feed_dict={x: x_np, y: y_np, is_training: True})
-    # batch_loss, summary, _ = sess.run([loss, summary_all, train_step],
-    #   feed_dict={x: batch_x, y: batch_y, is_training: True})
-    # train_writer.add_summary(summary, step)
+    train_writer.add_summary(summary, step)
     duration = time.time() - start_time
     # confusion_mat += batch_conf_mat.astype(np.uint64)
     if step % 10 == 0:
@@ -187,6 +195,8 @@ for epoch in range(1, num_epochs+1):
   iou = validate(val_data, x, y, y_pred, loss)
   if iou > best_iou:
     best_iou, best_epoch = iou, epoch
+    save_path = saver.save(sess, join(checkpoint_dir, 'model.ckpt'))
+    print('Model saved in file: ', save_path)
   print('\nBest IoU = %.2f (epoch %d)' % (best_iou, best_epoch))
 
 

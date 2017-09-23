@@ -6,7 +6,7 @@ import numpy as np
 import PIL.Image as pimg
 
 
-def print_metrics(conf_mat, name, class_info):
+def print_stats(conf_mat, name, class_info):
   num_correct = conf_mat.trace()
   num_classes = conf_mat.shape[0]
   total_size = conf_mat.sum()
@@ -59,3 +59,8 @@ def get_expired_time(start_time):
   delta -= minute * 60
   seconds = delta
   return '%02d' % hour + ':%02d' % minute + ':%02d' % seconds
+
+def clear_dir(path):
+  if tf.gfile.Exists(path):
+    tf.gfile.DeleteRecursively(path)
+  tf.gfile.MakeDirs(path)

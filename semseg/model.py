@@ -20,7 +20,10 @@ bn_params = {
 def conv(x, num_maps, k=3):
   # x = tf.layers.conv2d(x, num_maps, k,
   #   kernel_regularizer=tf.contrib.layers.l2_regularizer(weight_decay), padding='same')
-  x = tf.layers.conv2d(x, num_maps, k, padding='same')  
+
+  x = tf.layers.conv2d(x, num_maps, k, padding='same')
+  
+  # only 1.5 % better
   # x = tf.layers.conv2d(x, num_maps, k, use_bias=False, padding='same')
   # x = tf.layers.batch_normalization(x, training=is_training)
   x = tf.nn.relu(x)
@@ -43,7 +46,7 @@ def block(x, size, name):
     x = conv(x, size)
   return x
 
-def build_model(x, num_classes):
+def build_model_adv(x, num_classes):
   # input_size = tf.shape(x)[height_dim:height_dim+2]
   print(x)
   input_size = x.get_shape().as_list()[1:3]
@@ -68,6 +71,23 @@ def build_model(x, num_classes):
   x = tf.image.resize_bilinear(x, input_size, name='upsample_logits')
   return x, is_training
 
+def build_model(x, num_classes):
+  # input_size = tf.shape(x)[height_dim:height_dim+2]
+  print(x)
+  input_size = x.get_shape().as_list()[1:3]
+  block_sizes = [64, 64, 64, 64]
+  # block_sizes = [64, 96, 128, 128]
+  x = conv(x, 32, k=3)
+  for i, size in enumerate(block_sizes):
+    with tf.name_scope('block'+str(i)):
+      x = pool(x)
+      x = conv(x, size)
+      # x = conv(x, size)
+  print(x)
+  with tf.name_scope('logits'):
+    x = tf.layers.conv2d(x, num_classes, 1, padding='same')
+    x = tf.image.resize_bilinear(x, input_size, name='upsample_logits')
+  return x, is_training
 
 # def conv_22(x, num_maps, k=3, activation=tf.nn.relu):
 #   return tf.layers.conv2d(x, num_maps, k, activation=activation, padding='same')
