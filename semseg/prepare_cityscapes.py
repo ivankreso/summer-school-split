@@ -9,9 +9,6 @@ from tqdm import trange
 
 
 def prepare_dataset(subset):
-
-
-  
   classes = [['road', [0, 1]],
             #  ['building+infrastructure', [2,3,4,5,6,7]],
              ['building', [2,3]],
@@ -21,20 +18,19 @@ def prepare_dataset(subset):
              ['person', [11,12]],
              ['vehicle', [13,14,15,16,17,18]],
              ['ignore', [19]]]
-  num_classes = len(class_info)
+  num_classes = len(classes) - 1
   ignore_id = num_classes
   id_map = {}
   for i, (_, ids) in enumerate(classes):
     for id in ids:
       id_map[id] = i
 
-  num_classes = len(classes[0])
   id_map = {}
   for i, (_, ids) in enumerate(classes):
     for id in ids:
       id_map[id] = i
 
-  save_dir = '/home/kivan/datasets/SSDS/cityscapes/'
+  save_dir = '/home/kivan/datasets/SSDS/cityscapes/final'
 
   img_size = (384, 160)
   cx_start = 0
@@ -73,6 +69,7 @@ def prepare_dataset(subset):
     ids = np.unique(labels)
     for id in ids:
       labels[labels==id] = id_map[id]
+    labels = labels.astype(np.uint8)
 
     img = pimg.open(img_paths[i])
     img = img.crop((cx_start,cy_start,cx_end,cy_end))
@@ -101,8 +98,15 @@ def prepare_dataset(subset):
   data['labels'] = all_labels
   data['names'] = img_names
   pickle.dump(data, open(join(save_dir, subset+'.pickle'), 'wb'))
-
-
+  # np.save(open(join(save_dir, subset+'2.npz'), 'wb'), data)
+  # np.save(open(join(save_dir, subset+'4.npz'), 'wb'), all_images, allow_pickle=False)
+  np.save(join(save_dir, subset+'_images.npz'), all_images)
+  np.save(join(save_dir, subset+'_labels.npz'), all_labels)
+  # all_labels.save(join(save_dir, subset+'_tagets.npz'))
+  # np.save(open(join(save_dir, subset+'_names.npz'), 'wb'), data)
+  # pickle.dump(data, open(join(save_dir, subset+'_names.pickle'), 'wb'))
+  pickle.dump(img_names, open(join(save_dir, subset+'_names.pickle'), 'wb'))
+  
 if __name__ == '__main__':
   prepare_dataset('train')
   prepare_dataset('val')

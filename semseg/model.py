@@ -46,7 +46,7 @@ def block(x, size, name):
     x = conv(x, size)
   return x
 
-def build_model_adv(x, num_classes):
+def build_model(x, num_classes):
   # input_size = tf.shape(x)[height_dim:height_dim+2]
   print(x)
   input_size = x.get_shape().as_list()[1:3]
@@ -54,15 +54,17 @@ def build_model_adv(x, num_classes):
   skip_layers = []
   x = conv(x, 32, k=3)
   for i, size in enumerate(block_sizes):
-    x = pool(x)
-    x = conv(x, size)
-    # x = conv(x, size)
-    skip_layers.append(x)
+    with tf.name_scope('block'+str(i)):
+      x = pool(x)
+      x = conv(x, size)
+      x = conv(x, size)
+      skip_layers.append(x)
 
   # # 36 without
   for i, skip in reversed(list(enumerate(skip_layers))):
     print(i, x, '\n', skip)
-    x = upsample(x, skip, block_sizes[i])
+    with tf.name_scope('upsample'+str(i)):
+      x = upsample(x, skip, block_sizes[i])
   print('final: ', x)
   # x = pool(x)
   # x = conv(x, 64, 3)
@@ -71,7 +73,7 @@ def build_model_adv(x, num_classes):
   x = tf.image.resize_bilinear(x, input_size, name='upsample_logits')
   return x, is_training
 
-def build_model(x, num_classes):
+def build_model_small(x, num_classes):
   # input_size = tf.shape(x)[height_dim:height_dim+2]
   print(x)
   input_size = x.get_shape().as_list()[1:3]
@@ -82,7 +84,7 @@ def build_model(x, num_classes):
     with tf.name_scope('block'+str(i)):
       x = pool(x)
       x = conv(x, size)
-      # x = conv(x, size)
+      x = conv(x, size)
   print(x)
   with tf.name_scope('logits'):
     x = tf.layers.conv2d(x, num_classes, 1, padding='same')

@@ -16,7 +16,7 @@ def print_stats(conf_mat, name, class_info):
   FN = TPFN - conf_mat.diagonal()
   FP = TPFP - conf_mat.diagonal()
   class_iou = np.zeros(num_classes)
-  print('\n', name, ' evaluation metrics:')
+  print('\n'+name+'evaluation stats:')
   for i in range(num_classes):
     TP = conf_mat[i,i]
     class_iou[i] = (TP / (TP + FP[i] + FN[i])) * 100.0

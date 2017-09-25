@@ -22,7 +22,8 @@ save_dir = 'local/output/'
 # learning_rate = 1e-4
 # learning_rate = 1e-4
 # learning_rate = 1e-2
-learning_rate = 1e-3
+# learning_rate = 1e-3
+learning_rate = 5e-4
 decay_power = 1.0
 # decay_power = 1.4
 
