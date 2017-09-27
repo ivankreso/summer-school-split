@@ -12,13 +12,11 @@ maxhw = 160
 import tensorflow as tf
 from models import *
 x = tf.placeholder(tf.float32, [None, maxhw, maxhw, 3])
-#x = tf.placeholder(tf.float32, [None, None, None, 3])
 pred, is_training = build_model(x, 3) # `x` is input, `3` specifies the number of output channels
 
 saver = tf.train.Saver()
 sess = tf.Session()
-# saver.restore(sess, 'save_l2/model')
-saver.restore(sess, 'save_nosigm/model')
+saver.restore(sess, 'save/model')
 
 #
 # runtime
@@ -37,6 +35,7 @@ def process_image(img, thr=0.1):
 if len(sys.argv)>=2:
 	#
 	img = cv2.imread(sys.argv[1])
+	scalefactor = 1.0
 	if img.shape[0]>maxhw or img.shape[1]>maxhw:
 		scalefactor = numpy.min((maxhw/img.shape[0], maxhw/img.shape[1]))
 	img = cv2.resize(img, (0,0), fx=scalefactor, fy=scalefactor)
