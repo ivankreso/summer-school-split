@@ -12,11 +12,13 @@ maxhw = 160
 import tensorflow as tf
 from models import *
 x = tf.placeholder(tf.float32, [None, maxhw, maxhw, 3])
+#x = tf.placeholder(tf.float32, [None, None, None, 3])
 pred, is_training = build_model(x, 3) # `x` is input, `3` specifies the number of output channels
 
 saver = tf.train.Saver()
 sess = tf.Session()
-saver.restore(sess, 'save/model')
+# saver.restore(sess, 'save_l2/model')
+saver.restore(sess, 'save_nosigm/model')
 
 #
 # runtime

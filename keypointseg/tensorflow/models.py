@@ -16,6 +16,8 @@ bn_params = {
 def conv(x, num_maps, k=3):
   # x = tf.layers.conv2d(x, num_maps, k,
   #   kernel_regularizer=tf.contrib.layers.l2_regularizer(weight_decay), padding='same')
+  # x = tf.layers.conv2d(x, num_maps, k, padding='same')
+
   x = tf.layers.conv2d(x, num_maps, k, use_bias=False,
     kernel_regularizer=tf.contrib.layers.l2_regularizer(1e-4), padding='same')
   x = tf.layers.batch_normalization(x, training=is_training)
@@ -55,4 +57,5 @@ def build_model(x, num_classes):
   print('final: ', x)
   x = tf.layers.conv2d(x, num_classes, 1, padding='same')
   x = tf.image.resize_bilinear(x, input_size, name='upsample_logits')
-  return tf.nn.sigmoid(x), is_training
+  # return tf.nn.sigmoid(x), is_training
+  return x, is_training
